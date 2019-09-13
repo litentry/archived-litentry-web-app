@@ -1,14 +1,57 @@
 #[macro_use]
 extern crate seed;
 use seed::prelude::*;
+use serde::{Serialize, Deserialize};
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Token {
+    id: u32,
+    identityId: u32,
+    tokenHash: String,
+    cost: String,
+    data: String,
+    dataType: String,
+    expired: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct TokenData {
+    data: TokenDataOwnedTokens,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct TokenDataOwnedTokens {
+    ownedTokens: Vec<Token>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Identity {
+    id: u32,
+    ownerId: u32,
+    identityHash: String
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct IdentityData {
+    data: IdentityDataOwnedIdentities,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct IdentityDataOwnedIdentities {
+    ownedIdentities: Vec<Identity>,
+}
+
 
 
 // Model
 pub struct Model {
     // for routing
     page: Page,
+
     // for page_account_state
     account_value: String,
+    owned_tokens: Vec<Token>,
+    owned_identities: Vec<Identity>
 
 }
 
@@ -17,9 +60,14 @@ impl Default for Model {
         Self {
             page: Page::EventList,
             account_value: "".to_string(),
+            owned_tokens: vec![],
+            owned_identities: vec![]
         }
     }
 }
+
+
+
 
 #[derive(Clone)]
 pub enum Page {
