@@ -4,20 +4,25 @@ use seed::prelude::*;
 
 
 // Model
-struct Model {
-    page: Page
+pub struct Model {
+    // for routing
+    page: Page,
+    // for page_account_state
+    account_value: String,
+
 }
 
 impl Default for Model {
     fn default() -> Self {
         Self {
-            page: Page::EventList
+            page: Page::EventList,
+            account_value: "".to_string(),
         }
     }
 }
 
 #[derive(Clone)]
-enum Page {
+pub enum Page {
     EventList,    // as index now
     AccountState,
     VerifyRequest,
@@ -27,9 +32,19 @@ enum Page {
 
 
 #[derive(Clone)]
-enum Msg {
+pub enum Msg {
+    // used for routing
     PageFowardTo(Page),
+
+    // used for page account state
+    PageAccountStateAccountInput(String),
+    PageAccountStateAccountInputBlur(String)
 }
+
+mod page_account_state;
+
+
+
 
 #[wasm_bindgen(start)]
 pub fn render() {
@@ -63,6 +78,12 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         Msg::PageFowardTo(page) => {
             model.page = page;
         },
+        Msg::PageAccountStateAccountInput(astr) => {
+            page_account_state::on_account_input(model, astr);
+        },
+        Msg::PageAccountStateAccountInputBlur(astr) => {
+            page_account_state::on_account_input_blur(model, astr);
+        }
     }
 }
 
@@ -75,7 +96,7 @@ fn view(model: &Model) -> impl View<Msg> {
             div!["This is event list page"]
         },
         Page::AccountState => {
-            div!["This is account state page"]
+            page_account_state::page_render(model)
         },
         Page::VerifyRequest => {
             div!["This is verify request page"]

@@ -7,3 +7,5 @@ Cargo.lock
 
 /pkg
 wasm-pack.log
+
+**/*~
