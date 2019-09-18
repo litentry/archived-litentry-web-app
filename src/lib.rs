@@ -4,44 +4,9 @@ use seed::prelude::*;
 use seed::{fetch, Method, Request};
 use serde::{Serialize, Deserialize};
 use futures::Future;
+use seed::dom_types::MessageMapper;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Token {
-    id: u32,
-    identityId: u32,
-    tokenHash: String,
-    cost: String,
-    data: String,
-    dataType: String,
-    expired: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct TokenDataOwnedTokens {
-    ownedTokens: Vec<Token>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct TokenData {
-    data: TokenDataOwnedTokens,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Identity {
-    id: u32,
-    ownerId: u32,
-    identityHash: String
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct IdentityDataOwnedIdentities {
-    ownedIdentities: Vec<Identity>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct IdentityData {
-    data: IdentityDataOwnedIdentities,
-}
+mod page_account_state;
 
 
 // Model
@@ -49,10 +14,9 @@ pub struct Model {
     // for routing
     page: Page,
 
-    // for page_account_state
-    account_value: String,
-    owned_tokens: Vec<Token>,
-    owned_identities: Vec<Identity>
+    //
+    account_state_model: page_account_state::Model
+
 
 }
 
@@ -60,9 +24,7 @@ impl Default for Model {
     fn default() -> Self {
         Self {
             page: Page::EventList,
-            account_value: "".to_string(),
-            owned_tokens: vec![],
-            owned_identities: vec![]
+            account_state_model: page_account_state::Model::default(),
         }
     }
 }
@@ -84,16 +46,12 @@ pub enum Page {
 pub enum Msg {
     // used for routing
     PageFowardTo(Page),
-
-    // used for page account state
-    PageAccountStateAccountInput(String),
-    PageAccountStateAccountInputBlur(String),
-    OwnedTokensRequestFetched(fetch::ResponseDataResult<TokenData>),
-    OwnedIdentitiesRequestFetched(fetch::ResponseDataResult<IdentityData>)
+    // for children pages' msgs
+    PageAccountState(page_account_state::Msg),
 
 }
 
-mod page_account_state;
+
 
 
 
@@ -130,35 +88,8 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::PageFowardTo(page) => {
             model.page = page;
         },
-        Msg::PageAccountStateAccountInput(astr) => {
-            page_account_state::on_account_input(model, astr);
-        },
-        Msg::PageAccountStateAccountInputBlur(astr) => {
-            page_account_state::on_account_input_blur(model, astr);
-            orders.skip().perform_cmd(page_account_state::make_request_owned_identities());
-            orders.skip().perform_cmd(page_account_state::make_request_owned_tokens());
-        },
-        Msg::OwnedIdentitiesRequestFetched(Ok(response_data)) => {
-            log!(format!("Response data: {:#?}", response_data));
-            self.owned_identities = response_data.data.ownedIdentities;
-        },
-        Msg::OwnedIdentitiesRequestFetched(Err(fail_reason)) => {
-            error!(format!(
-                "Fetch error - Sending message failed - {:#?}",
-                fail_reason
-            ));
-            orders.skip();
-        },
-        Msg::OwnedTokensRequestFetched(Ok(response_data)) => {
-            log!(format!("Response data: {:#?}", response_data));
-            self.owned_tokens = response_data.data.ownedTokens;
-        },
-        Msg::OwnedTokensRequestFetched(Err(fail_reason)) => {
-            error!(format!(
-                "Fetch error - Sending message failed - {:#?}",
-                fail_reason
-            ));
-            orders.skip();
+        Msg::PageAccountState(msg) => {
+            page_account_state::update(msg, &mut model.account_state_model, &mut orders.proxy(Msg::PageAccountState));
         }
     }
 }
@@ -172,7 +103,8 @@ fn view(model: &Model) -> impl View<Msg> {
             div!["This is event list page"]
         },
         Page::AccountState => {
-            page_account_state::page_render(model)
+            page_account_state::view(&model.account_state_model)
+                .map_message(Msg::PageAccountState)
         },
         Page::VerifyRequest => {
             div!["This is verify request page"]

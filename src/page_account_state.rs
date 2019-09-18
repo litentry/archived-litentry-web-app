@@ -1,11 +1,112 @@
 use seed::prelude::*;
 use seed::{fetch, Method, Request};
+use serde::{Serialize, Deserialize};
 use serde_json::json;
+use futures::Future;
+use seed::dom_types::MessageMapper;
 
-use crate::{
-    Model,
-    Msg
-};
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Token {
+    id: u32,
+    identityId: u32,
+    tokenHash: String,
+    cost: String,
+    data: String,
+    dataType: String,
+    expired: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct TokenDataOwnedTokens {
+    ownedTokens: Vec<Token>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct TokenData {
+    data: TokenDataOwnedTokens,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Identity {
+    id: u32,
+    ownerId: u32,
+    identityHash: String
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct IdentityDataOwnedIdentities {
+    ownedIdentities: Vec<Identity>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct IdentityData {
+    data: IdentityDataOwnedIdentities,
+}
+
+
+pub struct Model {
+    account_value: String,
+    owned_tokens: Vec<Token>,
+    owned_identities: Vec<Identity>
+}
+
+impl Default for Model {
+    fn default() -> Self {
+        Self {
+            account_value: "".to_string(),
+            owned_tokens: vec![],
+            owned_identities: vec![]
+        }
+    }
+}
+
+
+#[derive(Clone)]
+pub enum Msg {
+    AccountInput(String),
+    AccountInputBlur(String),
+    OwnedTokensRequestFetched(fetch::ResponseDataResult<TokenData>),
+    OwnedIdentitiesRequestFetched(fetch::ResponseDataResult<IdentityData>)
+}
+
+
+pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
+    match msg {
+        Msg::AccountInput(astr) => {
+            on_account_input(model, astr);
+        },
+        Msg::AccountInputBlur(astr) => {
+            on_account_input_blur(model, astr);
+            orders.skip().perform_cmd(make_request_owned_tokens());
+            orders.skip().perform_cmd(make_request_owned_identities());
+        },
+        Msg::OwnedIdentitiesRequestFetched(Ok(response_data)) => {
+            log!(format!("Response data: {:#?}", response_data));
+            model.owned_identities = response_data.data.ownedIdentities;
+        },
+        Msg::OwnedIdentitiesRequestFetched(Err(fail_reason)) => {
+            error!(format!(
+                "Fetch error - Sending message failed - {:#?}",
+                fail_reason
+            ));
+            orders.skip();
+        },
+        Msg::OwnedTokensRequestFetched(Ok(response_data)) => {
+            log!(format!("Response data: {:#?}", response_data));
+            model.owned_tokens = response_data.data.ownedTokens;
+        },
+        Msg::OwnedTokensRequestFetched(Err(fail_reason)) => {
+            error!(format!(
+                "Fetch error - Sending message failed - {:#?}",
+                fail_reason
+            ));
+            orders.skip();
+        }
+    }
+
+
+
+}
 
 
 pub fn on_account_input(model: &mut Model, input_value: String) {
@@ -19,7 +120,7 @@ pub fn on_account_input_blur(model: &mut Model, astr: String) {
 
 fn make_request_owned_identities() -> impl Future<Item = Msg, Error = Msg> {
     let url = "http://112.125.25.18:3000/graphql";
-    let message = json!{
+    let message = json!({
         "query": r#"
 {
   ownedIdentities (address: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY") {
@@ -28,7 +129,7 @@ fn make_request_owned_identities() -> impl Future<Item = Msg, Error = Msg> {
     identityHash
   }
 }"#
-    };
+    });
 
     // send account to server, to get
     Request::new(url)
@@ -39,7 +140,7 @@ fn make_request_owned_identities() -> impl Future<Item = Msg, Error = Msg> {
 
 fn make_request_owned_tokens() -> impl Future<Item = Msg, Error = Msg> {
     let url = "http://112.125.25.18:3000/graphql";
-    let message = json!{
+    let message = json!({
         "query": r#"
 {
   ownedTokens (address: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY") {
@@ -53,7 +154,7 @@ fn make_request_owned_tokens() -> impl Future<Item = Msg, Error = Msg> {
     expired
   }
 }"#
-    };
+    });
 
     // send account to server, to get
     Request::new(url)
@@ -82,7 +183,7 @@ fn render_identities(model: &Model) -> Vec<Node<Msg>> {
 }
 
 
-pub fn page_render(model: &Model) -> Node<Msg> {
+pub fn view(model: &Model) -> Node<Msg> {
     div![id!("page_account_state"),
          div![class!["account"],
               span!["Your Account: "],
@@ -91,8 +192,8 @@ pub fn page_render(model: &Model) -> Node<Msg> {
                       At::Placeholder => "Please input your account here",
                       At::Value => "",
                   },
-                  input_ev(Ev::Input, Msg::PageAccountStateAccountInput),
-                  input_ev(Ev::Blur, Msg::PageAccountStateAccountInputBlur)
+                  input_ev(Ev::Input, Msg::AccountInput),
+                  input_ev(Ev::Blur, Msg::AccountInputBlur)
               ]
          ],
          div![class!["owned_token_list"],
@@ -103,8 +204,5 @@ pub fn page_render(model: &Model) -> Node<Msg> {
               div![class!["title"], "Owned Identity List"],
               div![class!["content"], render_identities(model)]
          ],
-
-    ],
-
-
+    ]
 }
