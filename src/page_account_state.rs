@@ -1,4 +1,6 @@
 use seed::prelude::*;
+use seed::{fetch, Method, Request};
+use serde_json::json;
 
 use crate::{
     Model,
@@ -13,9 +15,52 @@ pub fn on_account_input(model: &mut Model, input_value: String) {
 pub fn on_account_input_blur(model: &mut Model, astr: String) {
     log!("aset is ", astr);
     log!("now account value is: ", model.account_value);
-
 }
 
+fn make_request_owned_identities() -> impl Future<Item = Msg, Error = Msg> {
+    let url = "http://112.125.25.18:3000/graphql";
+    let message = json!{
+        "query": r#"
+{
+  ownedIdentities (address: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY") {
+    id
+    ownerId
+    identityHash
+  }
+}"#
+    };
+
+    // send account to server, to get
+    Request::new(url)
+        .method(Method::Post)
+        .send_json(&message)
+        .fetch_json_data(Msg::OwnedIdentitiesRequestFetched)
+}
+
+fn make_request_owned_tokens() -> impl Future<Item = Msg, Error = Msg> {
+    let url = "http://112.125.25.18:3000/graphql";
+    let message = json!{
+        "query": r#"
+{
+  ownedTokens (address: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY") {
+    id
+    identityId
+    ownerId
+    tokenHash
+    cost
+    data
+    dataType
+    expired
+  }
+}"#
+    };
+
+    // send account to server, to get
+    Request::new(url)
+        .method(Method::Post)
+        .send_json(&message)
+        .fetch_json_data(Msg::OwnedTokensRequestFetched)
+}
 
 
 fn render_tokens(model: &Model) -> Vec<Node<Msg>> {
@@ -59,5 +104,7 @@ pub fn page_render(model: &Model) -> Node<Msg> {
               div![class!["content"], render_identities(model)]
          ],
 
-    ]
+    ],
+
+
 }

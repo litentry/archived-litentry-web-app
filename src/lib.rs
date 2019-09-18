@@ -1,7 +1,9 @@
 #[macro_use]
 extern crate seed;
 use seed::prelude::*;
+use seed::{fetch, Method, Request};
 use serde::{Serialize, Deserialize};
+use futures::Future;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Token {
@@ -15,13 +17,13 @@ pub struct Token {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct TokenData {
-    data: TokenDataOwnedTokens,
+pub struct TokenDataOwnedTokens {
+    ownedTokens: Vec<Token>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct TokenDataOwnedTokens {
-    ownedTokens: Vec<Token>,
+pub struct TokenData {
+    data: TokenDataOwnedTokens,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -32,15 +34,14 @@ pub struct Identity {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct IdentityData {
-    data: IdentityDataOwnedIdentities,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct IdentityDataOwnedIdentities {
     ownedIdentities: Vec<Identity>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct IdentityData {
+    data: IdentityDataOwnedIdentities,
+}
 
 
 // Model
@@ -86,7 +87,10 @@ pub enum Msg {
 
     // used for page account state
     PageAccountStateAccountInput(String),
-    PageAccountStateAccountInputBlur(String)
+    PageAccountStateAccountInputBlur(String),
+    OwnedTokensRequestFetched(fetch::ResponseDataResult<TokenData>),
+    OwnedIdentitiesRequestFetched(fetch::ResponseDataResult<IdentityData>)
+
 }
 
 mod page_account_state;
@@ -121,7 +125,7 @@ fn routes(url: seed::Url) -> Msg {
     }
 }
 
-fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
+fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::PageFowardTo(page) => {
             model.page = page;
@@ -131,6 +135,30 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         },
         Msg::PageAccountStateAccountInputBlur(astr) => {
             page_account_state::on_account_input_blur(model, astr);
+            orders.skip().perform_cmd(page_account_state::make_request_owned_identities());
+            orders.skip().perform_cmd(page_account_state::make_request_owned_tokens());
+        },
+        Msg::OwnedIdentitiesRequestFetched(Ok(response_data)) => {
+            log!(format!("Response data: {:#?}", response_data));
+            self.owned_identities = response_data.data.ownedIdentities;
+        },
+        Msg::OwnedIdentitiesRequestFetched(Err(fail_reason)) => {
+            error!(format!(
+                "Fetch error - Sending message failed - {:#?}",
+                fail_reason
+            ));
+            orders.skip();
+        },
+        Msg::OwnedTokensRequestFetched(Ok(response_data)) => {
+            log!(format!("Response data: {:#?}", response_data));
+            self.owned_tokens = response_data.data.ownedTokens;
+        },
+        Msg::OwnedTokensRequestFetched(Err(fail_reason)) => {
+            error!(format!(
+                "Fetch error - Sending message failed - {:#?}",
+                fail_reason
+            ));
+            orders.skip();
         }
     }
 }
