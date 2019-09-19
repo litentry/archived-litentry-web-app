@@ -6,25 +6,26 @@ use serde::{Serialize, Deserialize};
 use futures::Future;
 use seed::dom_types::MessageMapper;
 
-mod page_account_state;
-
+mod pas;
+mod pvr;
+mod pga;
 
 // Model
 pub struct Model {
     // for routing
     page: Page,
-
-    //
-    account_state_model: page_account_state::Model
-
-
+    pas_model: pas::Model,
+    pvr_model: pvr::Model,
+    pga_model: pga::Model,
 }
 
 impl Default for Model {
     fn default() -> Self {
         Self {
             page: Page::EventList,
-            account_state_model: page_account_state::Model::default(),
+            pas_model: pas::Model::default(),
+            pvr_model: pvr::Model::default(),
+            pga_model: pga::Model::default(),
         }
     }
 }
@@ -47,8 +48,9 @@ pub enum Msg {
     // used for routing
     PageFowardTo(Page),
     // for children pages' msgs
-    PageAccountState(page_account_state::Msg),
-
+    Pas(pas::Msg),
+    Pvr(pvr::Msg),
+    Pga(pga::Msg),
 }
 
 
@@ -88,8 +90,14 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::PageFowardTo(page) => {
             model.page = page;
         },
-        Msg::PageAccountState(msg) => {
-            page_account_state::update(msg, &mut model.account_state_model, &mut orders.proxy(Msg::PageAccountState));
+        Msg::Pas(msg) => {
+            pas::update(msg, &mut model.pas_model, &mut orders.proxy(Msg::Pas));
+        }
+        Msg::Pvr(msg) => {
+            pvr::update(msg, &mut model.pvr_model, &mut orders.proxy(Msg::Pvr));
+        }
+        Msg::Pga(msg) => {
+            pga::update(msg, &mut model.pga_model, &mut orders.proxy(Msg::Pga));
         }
     }
 }
@@ -103,14 +111,16 @@ fn view(model: &Model) -> impl View<Msg> {
             div!["This is event list page"]
         },
         Page::AccountState => {
-            page_account_state::view(&model.account_state_model)
-                .map_message(Msg::PageAccountState)
+            pas::view(&model.pas_model)
+                .map_message(Msg::Pas)
         },
         Page::VerifyRequest => {
-            div!["This is verify request page"]
+            pvr::view(&model.pvr_model)
+                .map_message(Msg::Pvr)
         },
         Page::GenerateAuthorization => {
-            div!["This is generateauthorization page"]
+            pga::view(&model.pga_model)
+                .map_message(Msg::Pga)
         }
     };
 
