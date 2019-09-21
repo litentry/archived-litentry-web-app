@@ -1,0 +1,9 @@
+html, body, #fullscreen {
+    width: 100%;
+}
+
+.content {
+    background-color: gray;
+    width: 90%;
+    min-height: 200px;
+}

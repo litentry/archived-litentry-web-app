@@ -4,6 +4,7 @@ use serde::{Serialize, Deserialize};
 use serde_json::json;
 use futures::Future;
 use seed::dom_types::MessageMapper;
+use wasm_bindgen::JsCast;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Token {
@@ -43,6 +44,11 @@ pub struct IdentityData {
     data: IdentityDataOwnedIdentities,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DataPassed {
+    pub tokenHash: String,
+}
+
 
 pub struct Model {
     account_value: String,
@@ -66,7 +72,8 @@ pub enum Msg {
     AccountInput(String),
     AccountInputBlur(String),
     OwnedTokensRequestFetched(fetch::ResponseDataResult<TokenData>),
-    OwnedIdentitiesRequestFetched(fetch::ResponseDataResult<IdentityData>)
+    OwnedIdentitiesRequestFetched(fetch::ResponseDataResult<IdentityData>),
+    VerifyToken(Option<String>)
 }
 
 
@@ -101,6 +108,19 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 fail_reason
             ));
             orders.skip();
+        },
+        Msg::VerifyToken(tokenHash) => {
+            log!("tokenHash is: ", tokenHash);
+
+            // store to local storage
+            let data = DataPassed {
+                tokenHash: tokenHash.unwrap()
+            };
+            let storage = seed::storage::get_storage().unwrap();
+            seed::storage::store_data(&storage, "data-passed", &data);
+
+            // jump to second page
+
         }
     }
 
@@ -168,7 +188,21 @@ fn render_tokens(model: &Model) -> Vec<Node<Msg>> {
     model.owned_tokens.iter().map(|item| {
         div![class!["item"],
              span![class!["caption"], item.tokenHash],
-             span![class!["action"], "Verify"],
+             a![
+                 attrs!{
+                     At::Class => "action",
+                     At::Href => "/verify_request",
+                     At::Custom("tokenHash".to_string()) => item.tokenHash
+                 },
+                 raw_ev(Ev::Click, move |event| {
+                     let tokenHash: Option<String> = event.target()
+                         .and_then(|et| et.dyn_into::<web_sys::Element>().ok())
+                         .and_then(|el| el.get_attribute("tokenHash"));
+                     //event.prevent_default();
+                     Msg::VerifyToken(tokenHash)
+                 }),
+                 "Verify"
+             ],
         ]
     }).collect()
 }

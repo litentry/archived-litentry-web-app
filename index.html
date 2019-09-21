@@ -6,19 +6,20 @@
 
     <meta name="description" content="">
 
-    <link rel="icon" type="image/png" href="/public/favicon.png">
+    <link rel="icon" type="image/png" href="/static/favicon.png">
+    <link rel="stylesheet" href="/static/styles.css">
 
     <title>A Title</title>
 
     </head>
 
     <body>
-        <section id="app"></section>
-        <script type="module">
-            // https://rustwasm.github.io/docs/wasm-bindgen/examples/without-a-bundler.html
-            import init from '/pkg/package.js';
-            init('/pkg/package_bg.wasm');
-        </script>
+	<section id="app"></section>
+	<script type="module">
+	    // https://rustwasm.github.io/docs/wasm-bindgen/examples/without-a-bundler.html
+	    import init from '/pkg/package.js';
+	    init('/pkg/package_bg.wasm');
+	</script>
 
     </body>
 </html>
