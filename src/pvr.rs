@@ -29,17 +29,12 @@ pub struct TokenInfoData {
 }
 
 
-#[derive(Clone)]
-pub enum NetworkMsg {
-    TokenInfoRequestFetched(fetch::ResponseDataResult<TokenInfoData>),
-}
-
 
 #[derive(Serialize, Deserialize, Clone)]
 pub enum Msg {
     PageLoaded(String),
-    TokenInfoData(TokenInfoData),
-    OnFetchErr
+    TokenInfoData(Option<TokenInfoData>),
+    OnGetInfoErr
 }
 
 
@@ -57,24 +52,25 @@ fn get_token_info(tokenHash: String) -> impl Future<Item = Msg, Error = Msg> {
         "query": &body
     });
 
+
     // send account to server, to get
     Request::new(url)
         .method(Method::Post)
         .send_json(&message)
-        .fetch_json_data(NetworkMsg::TokenInfoRequestFetched)
+        .fetch_json_data(|r: fetch::ResponseDataResult<TokenInfoData>| r)
         .map(|p| {
             match p {
-                NetworkMsg::TokenInfoRequestFetched(Ok(data)) => {
-                    Msg::TokenInfoData(data)
+                Ok(data) => {
+                    Msg::TokenInfoData(Some(data))
                 },
-                NetworkMsg::TokenInfoRequestFetched(Err(err)) => {
+                Err(err) => {
                     log!(err);
-                    Msg::TokenInfoData(TokenInfoData::default())
+                    Msg::TokenInfoData(None)
                 }
             }
         })
         .map_err( |_| {
-            Msg::OnFetchErr
+            Msg::OnGetInfoErr
         })
 }
 
@@ -86,24 +82,16 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             log!("PageLoaded - ", astr);
             orders.skip().perform_cmd(get_token_info(astr));
         },
-        // Msg::TokenInfoRequestFetched(Ok(response_data)) => {
-        //     log!(format!("Response data: {:#?}", response_data));
-        //     model.token_info = response_data.data.getTokenInfo;
-        // },
-        // Msg::TokenInfoRequestFetched(Err(fail_reason)) => {
-        //     error!(format!(
-        //         "Fetch error - Sending message failed - {:#?}",
-        //         fail_reason
-        //     ));
-        //     orders.skip();
-        // },
-        Msg::TokenInfoData(data) => {
+        Msg::TokenInfoData(Some(data)) => {
             log!(format!("in token info data handler {:?}", data));
             model.token_info = data.data.getTokenInfo;
         },
-        Msg::OnFetchErr => {
+        Msg::TokenInfoData(None) => {
+            log!("TokenInfoData None");
+        },
+        Msg::OnGetInfoErr => {
             let err = "";
-            log!(format!("Fetch error: {:?}", err));
+            log!(format!("Get Token Info error: {:?}", err));
         }
     }
 }
@@ -130,12 +118,13 @@ pub fn view(model: &Model) -> Node<Msg> {
          ],
          div![class!["action"], "Success or Not!"],
 
-         did_update(move |_| {
-             let tokenHash = data.tokenHash.clone();
-             log!("execute did_update", tokenHash);
-             seed::update(crate::Msg::Pvr(Msg::PageLoaded(tokenHash)));
-             //seed::update(crate::Msg::Test(tokenHash));
-             //seed::update(Msg::PageLoaded(tokenHash));
-         })
+         // use this empty div to act as a event placeholder
+         div![
+             did_mount(move |_| {
+                 let tokenHash = data.tokenHash.clone();
+                 log!("execute did_update", tokenHash);
+                 seed::update(crate::Msg::Pvr(Msg::PageLoaded(tokenHash)));
+             })
+         ]
     ]
 }
