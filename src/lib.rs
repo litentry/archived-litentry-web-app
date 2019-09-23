@@ -33,7 +33,7 @@ impl Default for Model {
 
 
 
-#[derive(Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum Page {
     EventList,    // as index now
     AccountState,
@@ -43,7 +43,7 @@ pub enum Page {
 }
 
 
-#[derive(Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum Msg {
     // used for routing
     PageFowardTo(Page),
@@ -51,6 +51,7 @@ pub enum Msg {
     Pas(pas::Msg),
     Pvr(pvr::Msg),
     Pga(pga::Msg),
+    Test(String)
 }
 
 
@@ -62,6 +63,9 @@ pub enum Msg {
 pub fn render() {
     seed::App::build(|_, _| Model::default(), update, view)
         .routes(routes)
+        // `trigger_update_handler` is necessary,
+        // because we want to process `seed::update(..)` calls.
+        .window_events(|_| vec![trigger_update_handler()])
         .finish()
         .run();
 }
@@ -98,6 +102,9 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
         Msg::Pga(msg) => {
             pga::update(msg, &mut model.pga_model, &mut orders.proxy(Msg::Pga));
+        },
+        Msg::Test(astr) => {
+            log!(astr)
         }
     }
 }

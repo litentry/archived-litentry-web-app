@@ -16,7 +16,7 @@ impl Default for Model {
 }
 
 
-#[derive(Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum Msg {
 }
 

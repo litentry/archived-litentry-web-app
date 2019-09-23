@@ -6,7 +6,7 @@ use futures::Future;
 use seed::dom_types::MessageMapper;
 use wasm_bindgen::JsCast;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Token {
     id: u32,
     identityId: u32,
@@ -17,29 +17,29 @@ pub struct Token {
     expired: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct TokenDataOwnedTokens {
     ownedTokens: Vec<Token>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct TokenData {
     data: TokenDataOwnedTokens,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Identity {
     id: u32,
     ownerId: u32,
     identityHash: String
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct IdentityDataOwnedIdentities {
     ownedIdentities: Vec<Identity>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct IdentityData {
     data: IdentityDataOwnedIdentities,
 }
@@ -66,14 +66,21 @@ impl Default for Model {
     }
 }
 
-
 #[derive(Clone)]
+pub enum NetworkMsg {
+    OwnedTokensRequestFetched(fetch::ResponseDataResult<TokenData>),
+    OwnedIdentitiesRequestFetched(fetch::ResponseDataResult<IdentityData>),
+}
+
+
+#[derive(Serialize, Deserialize, Clone)]
 pub enum Msg {
     AccountInput(String),
     AccountInputBlur(String),
-    OwnedTokensRequestFetched(fetch::ResponseDataResult<TokenData>),
-    OwnedIdentitiesRequestFetched(fetch::ResponseDataResult<IdentityData>),
-    VerifyToken(Option<String>)
+    TokenData(TokenData),
+    IdentityData(IdentityData),
+    VerifyToken(Option<String>),
+    OnFetchErr
 }
 
 
@@ -87,27 +94,33 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             orders.skip().perform_cmd(make_request_owned_tokens());
             orders.skip().perform_cmd(make_request_owned_identities());
         },
-        Msg::OwnedIdentitiesRequestFetched(Ok(response_data)) => {
-            log!(format!("Response data: {:#?}", response_data));
-            model.owned_identities = response_data.data.ownedIdentities;
+        // Msg::OwnedIdentitiesRequestFetched(Ok(response_data)) => {
+        //     log!(format!("Response data: {:#?}", response_data));
+        //     model.owned_identities = response_data.data.ownedIdentities;
+        // },
+        // Msg::OwnedIdentitiesRequestFetched(Err(fail_reason)) => {
+        //     error!(format!(
+        //         "Fetch error - Sending message failed - {:#?}",
+        //         fail_reason
+        //     ));
+        //     orders.skip();
+        // },
+        // Msg::OwnedTokensRequestFetched(Ok(response_data)) => {
+        //     log!(format!("Response data: {:#?}", response_data));
+        //     model.owned_tokens = response_data.data.ownedTokens;
+        // },
+        // Msg::OwnedTokensRequestFetched(Err(fail_reason)) => {
+        //     error!(format!(
+        //         "Fetch error - Sending message failed - {:#?}",
+        //         fail_reason
+        //     ));
+        //     orders.skip();
+        // },
+        Msg::IdentityData(data) => {
+            model.owned_identities = data.data.ownedIdentities;
         },
-        Msg::OwnedIdentitiesRequestFetched(Err(fail_reason)) => {
-            error!(format!(
-                "Fetch error - Sending message failed - {:#?}",
-                fail_reason
-            ));
-            orders.skip();
-        },
-        Msg::OwnedTokensRequestFetched(Ok(response_data)) => {
-            log!(format!("Response data: {:#?}", response_data));
-            model.owned_tokens = response_data.data.ownedTokens;
-        },
-        Msg::OwnedTokensRequestFetched(Err(fail_reason)) => {
-            error!(format!(
-                "Fetch error - Sending message failed - {:#?}",
-                fail_reason
-            ));
-            orders.skip();
+        Msg::TokenData(data) => {
+            model.owned_tokens = data.data.ownedTokens;
         },
         Msg::VerifyToken(tokenHash) => {
             log!("tokenHash is: ", tokenHash);
@@ -121,6 +134,9 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
             // jump to second page
 
+        },
+        Msg::OnFetchErr => {
+            log!("OnFetcherr");
         }
     }
 
@@ -155,7 +171,26 @@ fn make_request_owned_identities() -> impl Future<Item = Msg, Error = Msg> {
     Request::new(url)
         .method(Method::Post)
         .send_json(&message)
-        .fetch_json_data(Msg::OwnedIdentitiesRequestFetched)
+        .fetch_json_data(NetworkMsg::OwnedIdentitiesRequestFetched)
+        .map(|p| {
+            match p {
+                NetworkMsg::OwnedIdentitiesRequestFetched(Ok(data)) => {
+                    Msg::IdentityData(data)
+                },
+                NetworkMsg::OwnedIdentitiesRequestFetched(Err(err)) => {
+                    log!(err);
+                    // XXX
+                    Msg::IdentityData(IdentityData::default())
+                },
+                _ => {
+                    log!("");
+                    Msg::TokenData(TokenData::default())
+                }
+            }
+        })
+        .map_err( |_| {
+            Msg::OnFetchErr
+        })
 }
 
 fn make_request_owned_tokens() -> impl Future<Item = Msg, Error = Msg> {
@@ -180,7 +215,27 @@ fn make_request_owned_tokens() -> impl Future<Item = Msg, Error = Msg> {
     Request::new(url)
         .method(Method::Post)
         .send_json(&message)
-        .fetch_json_data(Msg::OwnedTokensRequestFetched)
+        .fetch_json_data(NetworkMsg::OwnedTokensRequestFetched)
+        .map(|p| {
+            match p {
+                NetworkMsg::OwnedTokensRequestFetched(Ok(data)) => {
+                    Msg::TokenData(data)
+                },
+                NetworkMsg::OwnedTokensRequestFetched(Err(err)) => {
+                    log!(err);
+                    // XXX
+                    Msg::TokenData(TokenData::default())
+                },
+                _ => {
+                    log!("");
+                    Msg::TokenData(TokenData::default())
+                }
+            }
+        })
+        .map_err( |_| {
+            Msg::OnFetchErr
+        })
+
 }
 
 
