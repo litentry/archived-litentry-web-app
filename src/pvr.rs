@@ -34,7 +34,8 @@ pub struct TokenInfoData {
 pub enum Msg {
     PageLoaded(String),
     TokenInfoData(Option<TokenInfoData>),
-    OnGetInfoErr
+    OnGetInfoErr,
+    TakeSnapshot,
 }
 
 
@@ -81,6 +82,25 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::PageLoaded(astr) => {
             log!("PageLoaded - ", astr);
             orders.skip().perform_cmd(get_token_info(astr));
+
+            // open the camera
+            let constraints = web_sys::MediaStreamConstraints::new()
+                .audio(&JsValue::from_bool(false))
+                .video(&JsValue::from_bool(true));
+
+            // XXX: This return promise? Do it like a future?
+            web_sys::MediaDevices.get_user_media_with_constraints(&constraints)
+                .map_err(|e| log!(e) )
+                .and_then(|stream| {
+                    log!(stream);
+
+                    // get video element, and assign src to video element
+                    let video = doc.get_element_by_id("video")
+                        .and_then(|element| element.dyn_into::<web_sys::HtmlVideoElement>().ok()).unwrap();
+                    let url = web_sys::Url.create_object_url_with_source(stream).unwrap();
+                    video.set_attribute("src", &url);
+                    video.play();
+                });
         },
         Msg::TokenInfoData(Some(data)) => {
             log!(format!("in token info data handler {:?}", data));
@@ -92,6 +112,24 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::OnGetInfoErr => {
             let err = "";
             log!(format!("Get Token Info error: {:?}", err));
+        },
+        Msg::TakeSnapshot => {
+            log!("TakeSnapshot action");
+            let doc = seed::document();
+            let video = doc.get_element_by_id("video")
+                .and_then(|element| element.dyn_into::<web_sys::HtmlVideoElement>().ok()).unwrap();
+            let canvas = doc.get_element_by_id("canvas")
+                .and_then(|element| element.dyn_into::<web_sys::HtmlCanvasElement>().ok()).unwrap();
+            let img = doc.get_element_by_id("img")
+                .and_then(|element| element.dyn_into::<web_sys::HtmlImageElement>().ok()).unwrap();
+
+            // XXX: Convert type?
+            canvas.get_context("2d").unwrap().unwrap()
+                .draw_image_with_html_video_element_and_dw_and_dh(&video, 0, 0, 400, 300);
+
+            img.set_attribute("src", &canvas.to_data_url_with_type("image/png").unwrap());
+
+
         }
     }
 }
@@ -115,6 +153,24 @@ pub fn view(model: &Model) -> Node<Msg> {
          ],
          div![class!["content webscan"],
               div![class!["title"], "Webcan Scan QR Code"],
+              video![attrs! {
+                  At::Id => "video",
+                  At::Width => "400",
+                  At::Height => "300"
+              }],
+              button![id("action"),
+                      "Take Snapshot",
+                      simple_ev(Ev::Click, Msg::TakeSnapshot)
+              ],
+              canvas![attrs!{
+                  At::Id => "canvas",
+                  At::Width => "400",
+                  At::Height => "300"
+              }],
+              img![attrs!{
+                  At::Id => "img",
+                  At::Src => ""
+              }]
          ],
          div![class!["action"], "Success or Not!"],
 
