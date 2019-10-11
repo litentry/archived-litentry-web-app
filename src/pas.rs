@@ -66,7 +66,7 @@ impl Default for Model {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 pub enum Msg {
     AccountInput(String),
     AccountInputBlur(String),
@@ -75,6 +75,13 @@ pub enum Msg {
     VerifyToken(Option<String>),
     OnFetchErr
 }
+
+
+pub fn init(model: &mut Model, orders: &mut impl Orders<Msg>) {
+//    orders
+//        .perform_cmd();
+}
+
 
 
 pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {

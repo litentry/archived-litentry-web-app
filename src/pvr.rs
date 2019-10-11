@@ -28,11 +28,8 @@ pub struct TokenInfoData {
     data: TokenInfoDataGet,
 }
 
-
-
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 pub enum Msg {
-    PageLoaded(String),
     TokenInfoData(Option<TokenInfoData>),
     OnGetInfoErr
 }
@@ -74,14 +71,19 @@ fn get_token_info(tokenHash: String) -> impl Future<Item = Msg, Error = Msg> {
         })
 }
 
+pub fn init(model: &mut Model, orders: &mut impl Orders<Msg>) {
+    let storage = seed::storage::get_storage().unwrap();
+    let loaded_serialized = storage.get_item("data-passed").unwrap().unwrap();
+    let data: DataPassed = serde_json::from_str(&loaded_serialized).unwrap();
+    log!("data from local storage: ", data);
+
+    orders
+        .perform_cmd(get_token_info(data.tokenHash));
+}
 
 
 pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
-        Msg::PageLoaded(astr) => {
-            log!("PageLoaded - ", astr);
-            orders.skip().perform_cmd(get_token_info(astr));
-        },
         Msg::TokenInfoData(Some(data)) => {
             log!(format!("in token info data handler {:?}", data));
             model.token_info = data.data.getTokenInfo;
@@ -99,11 +101,6 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
 
 pub fn view(model: &Model) -> Node<Msg> {
-    let storage = seed::storage::get_storage().unwrap();
-    let loaded_serialized = storage.get_item("data-passed").unwrap().unwrap();
-    let data: DataPassed = serde_json::from_str(&loaded_serialized).unwrap();
-    log!("data from local storage: ", data);
-
     div![id!("pvr"),
          div![class!["account"],
               span!["Your Account: "],
@@ -117,14 +114,5 @@ pub fn view(model: &Model) -> Node<Msg> {
               div![class!["title"], "Webcan Scan QR Code"],
          ],
          div![class!["action"], "Success or Not!"],
-
-         // use this empty div to act as a event placeholder
-         div![
-             did_mount(move |_| {
-                 let tokenHash = data.tokenHash.clone();
-                 log!("execute did_update", tokenHash);
-                 seed::update(crate::Msg::Pvr(Msg::PageLoaded(tokenHash)));
-             })
-         ]
     ]
 }

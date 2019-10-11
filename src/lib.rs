@@ -30,10 +30,7 @@ impl Default for Model {
     }
 }
 
-
-
-
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 pub enum Page {
     EventList,    // as index now
     AccountState,
@@ -43,7 +40,7 @@ pub enum Page {
 }
 
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 pub enum Msg {
     // used for routing
     PageFowardTo(Page),
@@ -56,16 +53,13 @@ pub enum Msg {
 
 
 
-
-
-
 #[wasm_bindgen(start)]
 pub fn render() {
     seed::App::build(|_, _| Model::default(), update, view)
         .routes(routes)
         // `trigger_update_handler` is necessary,
         // because we want to process `seed::update(..)` calls.
-        .window_events(|_| vec![trigger_update_handler()])
+        //.window_events(|_| vec![trigger_update_handler()])
         .finish()
         .run();
 }
@@ -92,7 +86,15 @@ fn routes(url: seed::Url) -> Msg {
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::PageFowardTo(page) => {
-            model.page = page;
+            // switch page
+            model.page = page.clone();
+            // do child page initialization
+            match page {
+                Page::AccountState => pas::init(&mut model.pas_model, &mut orders.proxy(Msg::Pas)),
+                Page::VerifyRequest => pvr::init(&mut model.pvr_model, &mut orders.proxy(Msg::Pvr)),
+                Page::GenerateAuthorization => pga::init(&mut model.pga_model, &mut orders.proxy(Msg::Pga)),
+                Page::EventList => {}
+            }
         },
         Msg::Pas(msg) => {
             pas::update(msg, &mut model.pas_model, &mut orders.proxy(Msg::Pas));
