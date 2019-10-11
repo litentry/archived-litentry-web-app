@@ -15,9 +15,13 @@ impl Default for Model {
     }
 }
 
-
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 pub enum Msg {
+}
+
+pub fn init(model: &mut Model, orders: &mut impl Orders<Msg>) {
+//    orders
+//        .perform_cmd();
 }
 
 

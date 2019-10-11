@@ -3,6 +3,11 @@ use seed::{fetch, Method, Request};
 use serde::{Serialize, Deserialize};
 use serde_json::json;
 use futures::Future;
+use futures::future;
+use seed::{document, window};
+use wasm_bindgen::JsCast;
+use wasm_bindgen_futures::JsFuture;
+use web_sys::{HtmlMediaElement, MediaStream, MediaStreamConstraints};
 
 use crate::pas::DataPassed;
 
@@ -28,14 +33,12 @@ pub struct TokenInfoData {
     data: TokenInfoDataGet,
 }
 
-
-
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 pub enum Msg {
-    PageLoaded(String),
     TokenInfoData(Option<TokenInfoData>),
     OnGetInfoErr,
     TakeSnapshot,
+    UserMedia(Result<MediaStream, JsValue>),
 }
 
 
@@ -75,33 +78,43 @@ fn get_token_info(tokenHash: String) -> impl Future<Item = Msg, Error = Msg> {
         })
 }
 
+pub fn open_camera() -> impl Future<Item = Msg, Error = Msg> {
+    future::ok::<(), ()>(()).then(|_| {
+        // open the camera
+        let mut constraints = web_sys::MediaStreamConstraints::new();
+        constraints.audio(&JsValue::from_bool(false));
+        constraints.video(&JsValue::from_bool(true));
+
+        let media_stream_promise = window()
+            .navigator()
+            .media_devices()
+            .unwrap()
+            .get_user_media_with_constraints(&constraints)
+            .unwrap();
+
+        JsFuture::from(media_stream_promise)
+            .map(MediaStream::from)
+            .then(|result| Ok(Msg::UserMedia(result)))
+
+    })
+}
+
+
+pub fn init(model: &mut Model, orders: &mut impl Orders<Msg>) {
+    let storage = seed::storage::get_storage().unwrap();
+    let loaded_serialized = storage.get_item("data-passed").unwrap().unwrap();
+    let data: DataPassed = serde_json::from_str(&loaded_serialized).unwrap();
+    log!("data from local storage: ", data);
+
+    orders
+        .perform_cmd(get_token_info(data.tokenHash));
+
+    open_camera();
+}
 
 
 pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
-        Msg::PageLoaded(astr) => {
-            log!("PageLoaded - ", astr);
-            orders.skip().perform_cmd(get_token_info(astr));
-
-            // open the camera
-            let constraints = web_sys::MediaStreamConstraints::new()
-                .audio(&JsValue::from_bool(false))
-                .video(&JsValue::from_bool(true));
-
-            // XXX: This return promise? Do it like a future?
-            web_sys::MediaDevices.get_user_media_with_constraints(&constraints)
-                .map_err(|e| log!(e) )
-                .and_then(|stream| {
-                    log!(stream);
-
-                    // get video element, and assign src to video element
-                    let video = doc.get_element_by_id("video")
-                        .and_then(|element| element.dyn_into::<web_sys::HtmlVideoElement>().ok()).unwrap();
-                    let url = web_sys::Url.create_object_url_with_source(stream).unwrap();
-                    video.set_attribute("src", &url);
-                    video.play();
-                });
-        },
         Msg::TokenInfoData(Some(data)) => {
             log!(format!("in token info data handler {:?}", data));
             model.token_info = data.data.getTokenInfo;
@@ -113,35 +126,43 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             let err = "";
             log!(format!("Get Token Info error: {:?}", err));
         },
+        Msg::UserMedia(Ok(media_stream)) => {
+            let video_el = document()
+                .get_element_by_id("video")
+                .unwrap()
+                //.unwrap()
+                .dyn_into::<HtmlMediaElement>()
+                .unwrap();
+
+            video_el.set_src_object(Some(&media_stream));
+        },
+        Msg::UserMedia(Err(error)) => {
+            log!(error);
+        },
         Msg::TakeSnapshot => {
             log!("TakeSnapshot action");
-            let doc = seed::document();
-            let video = doc.get_element_by_id("video")
+            let video = document().get_element_by_id("video")
                 .and_then(|element| element.dyn_into::<web_sys::HtmlVideoElement>().ok()).unwrap();
-            let canvas = doc.get_element_by_id("canvas")
+            let canvas = document().get_element_by_id("canvas")
                 .and_then(|element| element.dyn_into::<web_sys::HtmlCanvasElement>().ok()).unwrap();
-            let img = doc.get_element_by_id("img")
+            let img = document().get_element_by_id("img")
                 .and_then(|element| element.dyn_into::<web_sys::HtmlImageElement>().ok()).unwrap();
 
             // XXX: Convert type?
-            canvas.get_context("2d").unwrap().unwrap()
-                .draw_image_with_html_video_element_and_dw_and_dh(&video, 0, 0, 400, 300);
+            // canvas.get_context("2d").unwrap().unwrap()
+            //     .draw_image_with_html_video_element_and_dw_and_dh(&video, 0, 0, 400, 300);
 
-            img.set_attribute("src", &canvas.to_data_url_with_type("image/png").unwrap());
+            // img.set_attribute("src", &canvas.to_data_url_with_type("image/png").unwrap());
 
 
-        }
+        },
+
     }
 }
 
 
 
 pub fn view(model: &Model) -> Node<Msg> {
-    let storage = seed::storage::get_storage().unwrap();
-    let loaded_serialized = storage.get_item("data-passed").unwrap().unwrap();
-    let data: DataPassed = serde_json::from_str(&loaded_serialized).unwrap();
-    log!("data from local storage: ", data);
-
     div![id!("pvr"),
          div![class!["account"],
               span!["Your Account: "],
@@ -158,7 +179,7 @@ pub fn view(model: &Model) -> Node<Msg> {
                   At::Width => "400",
                   At::Height => "300"
               }],
-              button![id("action"),
+              button![id!("action"),
                       "Take Snapshot",
                       simple_ev(Ev::Click, Msg::TakeSnapshot)
               ],
@@ -173,14 +194,5 @@ pub fn view(model: &Model) -> Node<Msg> {
               }]
          ],
          div![class!["action"], "Success or Not!"],
-
-         // use this empty div to act as a event placeholder
-         div![
-             did_mount(move |_| {
-                 let tokenHash = data.tokenHash.clone();
-                 log!("execute did_update", tokenHash);
-                 seed::update(crate::Msg::Pvr(Msg::PageLoaded(tokenHash)));
-             })
-         ]
     ]
 }
