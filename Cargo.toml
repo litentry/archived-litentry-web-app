@@ -30,7 +30,7 @@ features = [
     "HtmlVideoElement",
     "HtmlCanvasElement",
     "HtmlImageElement",
-
+    "CanvasRenderingContext2d",
 ]
 
 
