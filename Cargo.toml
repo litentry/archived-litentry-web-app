@@ -19,6 +19,12 @@ futures = "0.1"
 serde = { version = "^1.0.85", features = ['derive'] }
 serde_json = "1.0"
 
+bardecoder = "0.1"
+image = "0.21"
+
+#js-sys = "*"
+base64 = "0.10"
+
 [dependencies.web-sys]
 version = "0.3.27"
 features = [

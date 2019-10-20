@@ -159,8 +159,31 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 		.dyn_into::<web_sys::CanvasRenderingContext2d>().ok().unwrap()
 		.draw_image_with_html_video_element_and_dw_and_dh(&video, 0.0, 0.0, 400.0, 300.0);
 
-	    img.set_attribute("src", &canvas.to_data_url_with_type("image/png").unwrap());
 
+	    let img_base64_str = canvas.to_data_url_with_type("image/png").unwrap();
+	    img.set_attribute("src", &img_base64_str.clone());
+
+	    let offset = img_base64_str.find(',').unwrap_or(img_base64_str.len()) + 1;
+	    let mut value = img_base64_str;
+	    value.drain(..offset);
+	    log!(value);
+	    let bytes = base64::decode(&value).unwrap();
+	    log!(bytes.len());
+
+	    let img_obj = image::load_from_memory(&bytes).unwrap();
+	    //log!(img_obj);
+
+	    // Use default decoder
+	    let decoder = bardecoder::default_decoder();
+
+	    let results = decoder.decode(img_obj);
+	    log!(results);
+	    for result in results {
+		println!("{}", result.unwrap());
+	    }
+
+
+	    //canvas.to_blob( &js_sys::Function::new_with_args("blob", "console.log(blob);") ).unwrap();
 
 	},
 
