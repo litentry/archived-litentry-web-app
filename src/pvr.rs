@@ -249,13 +249,16 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             let decoder = bardecoder::default_decoder();
 
             let results = decoder.decode(img_obj);
-            //log!(results);
+            log!(results);
             // for result in results {
             //     log!("{}", result.unwrap());
             //}
-            if results.len() > 0 {
-                let qrstr = results[0].as_ref().unwrap().clone();
+            //if results.len() > 0 {
+                //let qrstr = results[0].as_ref().unwrap().clone();
+                // for test
+                let qrstr = "5Evyk5JtBixLd4YJVJ1p2bvwHcUiU6sz2obt1AoNHQanSXVW:0x65a03002318309774836915d916febd9a43a06014a29f3a34fd2ff2e795398f9:1571870508949:420e5c8c02083f39b60aca43c905740f84836aee3b5c2842dd924be3b3a192752acde3f9d9df116115313f08a9cce0f368dbdeda043ad889eafa1a82144f8780";
                 let v: Vec<&str> = qrstr.split(':').collect();
+                log!(v);
                 // const [ownerAccountId, tokenHash, timeStamp, signature] = qr.split(":");
 
                 let raw_data = format!("{}:{}:{}", v[0], v[1], v[2]);
@@ -267,7 +270,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     ));
 
 
-            }
+            //}
 
 
 
