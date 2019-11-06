@@ -255,19 +255,27 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             //}
             //if results.len() > 0 {
                 //let qrstr = results[0].as_ref().unwrap().clone();
-                // for test
-                let qrstr = "5Evyk5JtBixLd4YJVJ1p2bvwHcUiU6sz2obt1AoNHQanSXVW:0x65a03002318309774836915d916febd9a43a06014a29f3a34fd2ff2e795398f9:1571870508949:420e5c8c02083f39b60aca43c905740f84836aee3b5c2842dd924be3b3a192752acde3f9d9df116115313f08a9cce0f368dbdeda043ad889eafa1a82144f8780";
-                let v: Vec<&str> = qrstr.split(':').collect();
-                log!(v);
-                // const [ownerAccountId, tokenHash, timeStamp, signature] = qr.split(":");
+                // // for test
+                // let qrstr = "5Evyk5JtBixLd4YJVJ1p2bvwHcUiU6sz2obt1AoNHQanSXVW:0x65a03002318309774836915d916febd9a43a06014a29f3a34fd2ff2e795398f9:1571870508949:420e5c8c02083f39b60aca43c905740f84836aee3b5c2842dd924be3b3a192752acde3f9d9df116115313f08a9cce0f368dbdeda043ad889eafa1a82144f8780";
+                // let v: Vec<&str> = qrstr.split(':').collect();
+                // log!(v);
+                // // const [ownerAccountId, tokenHash, timeStamp, signature] = qr.split(":");
 
-                let raw_data = format!("{}:{}:{}", v[0], v[1], v[2]);
+                // let raw_data = format!("{}:{}:{}", v[0], v[1], v[2]);
+                // orders
+                //     .perform_cmd(verify_token(
+                //         v[1].to_string(),
+                //         v[3].to_string(),
+                //         raw_data
+                //     ));
+
                 orders
                     .perform_cmd(verify_token(
-                        v[1].to_string(),
-                        v[3].to_string(),
-                        raw_data
+                        "4fd465e48530a3a292908c1324d23f7a4183b82d0c763063c3d015618482002b".to_string(),
+                        "0xae2ba99f2821df7264809cf5586881ddee8ae7e51cce9b5f54f320fd84813427f105a83a0d8bd767f394741036f66de933d8bd427131dda85338d9c390a72389".to_string(),
+                        "0x354558574e4a756f50726f633761706d314a53386d395254715633765677523964436736735156704b6e6f48744a36384fd465e48530a3a292908c1324d23f7a4183b82d0c763063c3d015618482002b1572485754".to_string()
                     ));
+
 
 
             //}
