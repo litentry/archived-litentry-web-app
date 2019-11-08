@@ -3,7 +3,57 @@ html, body, #fullscreen {
 }
 
 .content {
-    background-color: gray;
+    background-color: #eee;
     width: 90%;
     min-height: 200px;
+}
+
+.page_tab {
+    float: left;
+    padding: 5px;
+    line-height: 46px;
+}
+
+.clear {
+    clear: both;
+}
+
+.account {
+    line-height: 50px;
+}
+
+.account input {
+    line-height: 24px;
+    padding: 1px 4px;
+    margin-left: 8px;
+    width: 400px;
+}
+
+.title {
+    line-height: 30px;
+}
+
+.content .item {
+    padding: 8px;
+}
+
+.item {
+    line-height: 30px;
+}
+
+.item .action {
+    display: inline-block;
+    margin-left: 10px;
+}
+
+video, button, canvas {
+    display: block;
+}
+
+video, canvas {
+    background-color: #eee;
+}
+
+button {
+    margin: 10px 0;
 }

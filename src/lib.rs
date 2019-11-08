@@ -133,21 +133,24 @@ fn view(model: &Model) -> impl View<Msg> {
     };
 
     div![
-        div![class!["navigation"],
-             div![class!["logo"],
-                  "Litentry Logo"
+        div![class!["navigator"],
+             div![class!["page_tab", "logo"],
+                  img![attrs!{
+                      At::Src => "/static/logo.webp",
+                      At::Alt => "Litentry Logo"
+
+                  }]
              ],
-             div![class!["navigator"],
-                  div![class!["page_tab"],
-                       a!["Account State", attrs!{At::Href => "/account_state"}]
-                  ],
-                  div![class!["page_tab"],
-                       a!["Verify Request", attrs!{At::Href => "/verify_request"}]
-                  ],
-                  div![class!["page_tab"],
-                       a!["GenerateAuthorization", attrs!{At::Href => "/generate_authorization"}]
-                  ],
+             div![class!["page_tab"],
+                  a!["Account State", attrs!{At::Href => "/account_state"}]
              ],
+             div![class!["page_tab"],
+                  a!["Verify Request", attrs!{At::Href => "/verify_request"}]
+             ],
+             div![class!["page_tab"],
+                  a!["GenerateAuthorization", attrs!{At::Href => "/generate_authorization"}]
+             ],
+             div![class!["clear"]]
         ],
         div![class!["page_content"],
              page_content_node

@@ -13,7 +13,8 @@ use crate::pas::DataPassed;
 
 #[derive(Default, Clone, Debug)]
 pub struct Model {
-    token_info: TokenInfo
+    token_info: TokenInfo,
+    verify_result: bool
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -189,9 +190,11 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             // check the result
             if data.data.verifyToken.verifyResult {
                 log!("Verify token success!");
+                model.verify_result = true;
             }
             else {
                 log!("Verify token failed!");
+                model.verify_result = false;
             }
         },
         Msg::VerifyTokenResult(None) => {
@@ -223,8 +226,8 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 .and_then(|element| element.dyn_into::<web_sys::HtmlVideoElement>().ok()).unwrap();
             let canvas = document().get_element_by_id("canvas")
                 .and_then(|element| element.dyn_into::<web_sys::HtmlCanvasElement>().ok()).unwrap();
-            let img = document().get_element_by_id("img")
-                .and_then(|element| element.dyn_into::<web_sys::HtmlImageElement>().ok()).unwrap();
+            // let img = document().get_element_by_id("img")
+            //     .and_then(|element| element.dyn_into::<web_sys::HtmlImageElement>().ok()).unwrap();
 
             // XXX: Convert type?
             canvas.get_context("2d").unwrap().unwrap()
@@ -233,7 +236,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
 
             let img_base64_str = canvas.to_data_url_with_type("image/png").unwrap();
-            img.set_attribute("src", &img_base64_str.clone());
+//            img.set_attribute("src", &img_base64_str.clone());
 
             let offset = img_base64_str.find(',').unwrap_or(img_base64_str.len()) + 1;
             let mut value = img_base64_str;
@@ -295,13 +298,19 @@ pub fn view(model: &Model) -> Node<Msg> {
     div![id!("pvr"),
          div![class!["account"],
               span!["Your Account: "],
-              span![model.token_info.ownerAddress],
+              input![
+                  attrs!{
+                      At::Placeholder => "Please input your account here",
+                      At::Value => model.token_info.ownerAddress,
+                      At::Disabled => true
+                  },
+              ]
          ],
          div![class!["token_info"],
               div![class!["item", "token"], format!("Token Id: {}", model.token_info.tokenHash)],
               div![class!["item", "identity"], format!("Issued Identity: {}", model.token_info.identityHash)]
          ],
-         div![class!["content webscan"],
+         div![class!["webscan"],
               div![class!["title"], "Webcan Scan QR Code"],
               video![attrs! {
                   At::Id => "video",
@@ -309,19 +318,20 @@ pub fn view(model: &Model) -> Node<Msg> {
                   At::Height => "300"
               }],
               button![id!("action"),
-                      "Take Snapshot",
+                      "Take Snapshot & Verify",
                       simple_ev(Ev::Click, Msg::TakeSnapshot)
               ],
+              div![class!["title"], "Captured Picture"],
               canvas![attrs!{
                   At::Id => "canvas",
                   At::Width => "400",
                   At::Height => "300"
               }],
-              img![attrs!{
-                  At::Id => "img",
-                  At::Src => ""
-              }]
+              // img![attrs!{
+              //     At::Id => "img",
+              //     At::Src => ""
+              // }]
          ],
-         div![class!["action"], "Success or Not!"],
+         div![class!["title"], format!("Verify Result: {}", model.verify_result)]
     ]
 }
